@@ -1,0 +1,334 @@
+---
+title: "Cyclistic Case Study"
+author: "Felipe Morales Osorio"
+date: "2025-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Cyclistic Data Analysis Report
+```{r}
+library(tidyverse)  #helps wrangle data
+# Use the conflicted package to manage conflicts
+library(conflicted)
+```
+
+### Set dplyr::filter and dplyr::lag as the default choices
+```{r}
+conflict_prefer("filter", "dplyr")
+conflict_prefer("lag", "dplyr")
+```
+
+
+## STEP 1: COLLECT DATA
+```{r}
+# Divvy datasets uploaded here
+tripdata_2025_07 <- read_csv("./Case Study Data/Original Data/2025-07-tripdata.csv")
+tripdata_2025_06 <- read_csv("./Case Study Data/Original Data/2025-06-tripdata.csv")
+tripdata_2025_05 <- read_csv("./Case Study Data/Original Data/2025-05-tripdata.csv")
+tripdata_2025_04 <- read_csv("./Case Study Data/Original Data/2025-04-tripdata.csv")
+tripdata_2025_03 <- read_csv("./Case Study Data/Original Data/2025-03-tripdata.csv")
+tripdata_2025_02 <- read_csv("./Case Study Data/Original Data/2025-02-tripdata.csv")
+tripdata_2025_01 <- read_csv("./Case Study Data/Original Data/2025-01-tripdata.csv")
+tripdata_2024_12 <- read_csv("./Case Study Data/Original Data/2024-12-tripdata.csv")
+tripdata_2024_11 <- read_csv("./Case Study Data/Original Data/2024-11-tripdata.csv")
+tripdata_2024_10 <- read_csv("./Case Study Data/Original Data/2024-10-tripdata.csv")
+tripdata_2024_09 <- read_csv("./Case Study Data/Original Data/2024-09-tripdata.csv")
+tripdata_2024_08 <- read_csv("./Case Study Data/Original Data/2024-08-tripdata.csv")
+```
+
+
+## STEP 2: WRANGLE DATA AND COMBINE INTO A SINGLE FILE
+### Compare column names each of the files.
+While the names don't have to be in the same order, they DO need to match perfectly before we can use a command to join them into one file
+```{r}
+colnames(tripdata_2025_07)
+colnames(tripdata_2025_06)
+colnames(tripdata_2025_05)
+colnames(tripdata_2025_04)
+colnames(tripdata_2025_03)
+colnames(tripdata_2025_02)
+colnames(tripdata_2025_01)
+colnames(tripdata_2024_12)
+colnames(tripdata_2024_11)
+colnames(tripdata_2024_10)
+colnames(tripdata_2024_09)
+colnames(tripdata_2024_08)
+```
+
+### Rename columns to make them consistent if needed
+In this case no renaming is needed but an example of how to do it if needed is found below. This assumes that q1_2019 needs renaming.
+
+(q1_2019 <- rename(q1_2019
+                   ,ride_id = trip_id
+                   ,rideable_type = bikeid
+                   ,started_at = start_time
+                   ,ended_at = end_time
+                   ,start_station_name = from_station_name
+                   ,start_station_id = from_station_id
+                   ,end_station_name = to_station_name
+                   ,end_station_id = to_station_id
+                   ,member_casual = usertype
+                   ))
+
+### Inspect the dataframes and look for incongruencies
+```{r}
+str(tripdata_2025_07)
+str(tripdata_2025_06)
+str(tripdata_2025_05)
+str(tripdata_2025_04)
+str(tripdata_2025_03)
+str(tripdata_2025_02)
+str(tripdata_2025_01)
+str(tripdata_2024_12)
+str(tripdata_2024_11)
+str(tripdata_2024_10)
+str(tripdata_2024_09)
+str(tripdata_2024_08)
+```
+
+### Convert columns so that they can stack correctly
+In this case, this is not necessary but below is an example of how to do it if needed. This assumes ride_id and rideable_type need to be converted to character types from the q1_2019 data frame.
+
+q1_2019 <-  mutate(q1_2019, ride_id = as.character(ride_id)
+                   ,rideable_type = as.character(rideable_type)) 
+
+### Stack individual monthly data frames into one big annual data frame
+```{r}
+annual_tripdata <- bind_rows(tripdata_2025_07, tripdata_2025_06, tripdata_2025_05, tripdata_2025_04, tripdata_2025_03, tripdata_2025_02, tripdata_2025_01, tripdata_2024_12, tripdata_2024_11, tripdata_2024_10, tripdata_2024_09, tripdata_2024_08)
+```
+
+### Remove fields or columns that are not needed
+The longitude and latitude data was removed as well as the information about the station names. This was done using the dpylr select method.
+
+```{r}
+annual_tripdata <- annual_tripdata %>%  
+  select(-c(start_station_name, start_station_id, end_station_name, end_station_id, start_lat, start_lng, end_lat, end_lng))
+```
+
+
+
+## STEP 3: CLEAN UP AND ADD DATA TO PREPARE FOR ANALYSIS
+### Inspect the new table that has been created
+```{r}
+colnames(annual_tripdata)  #List of column names
+nrow(annual_tripdata)  #How many rows are in data frame?
+dim(annual_tripdata)  #Dimensions of the data frame?
+head(annual_tripdata)  #See the first 6 rows of data frame.
+tail(annual_tripdata)  #See the last 6 rows of data frame.
+str(annual_tripdata)  #See list of columns and data types (numeric, character, etc)
+summary(annual_tripdata)  #Statistical summary of data. Mainly for numeric
+```
+
+### Check the member_casual field
+This step ensures that the character field of member_casual only contains 2 types of entries. If not we need to reassign some of the entries for consistency.
+```{r}
+table(annual_tripdata$member_casual)
+```
+
+
+### Reassign to the desired values for consistency
+This step is not necessary in our case but below is an example of how reassignment would work if the member_casual field contained more than 2 types of entries. We could convert the "Subscriber" entry to the "member" entry and "Customer" entry to the "casual" entry if they appeared in the data to make it consistent:
+
+all_trips <-  all_trips %>% 
+  mutate(member_casual = recode(member_casual
+                                ,"Subscriber" = "member"
+                                ,"Customer" = "casual"))
+
+### Add columns that list the date, month, day, and year of each ride
+This will allow us to aggregate ride data for each month, day, or year ... before completing these operations we could only aggregate at the ride level https://www.statmethods.net/input/dates.html more on date formats in R found at that link
+```{r}
+annual_tripdata$date <- as.Date(annual_tripdata$started_at) #The default format is yyyy-mm-dd
+annual_tripdata$month <- format(as.Date(annual_tripdata$date), "%m")
+annual_tripdata$day <- format(as.Date(annual_tripdata$date), "%d")
+annual_tripdata$year <- format(as.Date(annual_tripdata$date), "%Y")
+annual_tripdata$day_of_week <- format(as.Date(annual_tripdata$date), "%A")
+```
+
+
+### Add a "ride_length" calculation to all_trips (in seconds)
+https://stat.ethz.ch/R-manual/R-devel/library/base/html/difftime.html
+```{r}
+annual_tripdata$ride_length <- difftime(annual_tripdata$ended_at,annual_tripdata$started_at)
+```
+
+### Inspect the structure of the columns
+```{r}
+str(annual_tripdata)
+```
+
+### Convert "ride_length" from Factor to numeric so we can run calculations on the data
+```{r}
+is.factor(annual_tripdata$ride_length)
+annual_tripdata$ride_length <- as.numeric(as.character(annual_tripdata$ride_length))
+is.numeric(annual_tripdata$ride_length)
+```
+
+
+### Remove "bad" data
+The dataframe includes a few hundred entries where ride_length was negative. We will remove these entries. We will create a new version of the dataframe (v2) since data is being removed: https://www.datasciencemadesimple.com/delete-or-drop-rows-in-r-with-conditions-2/
+```{r}
+annual_tripdata_v2 <- annual_tripdata[!annual_tripdata$ride_length<0,]
+```
+
+
+### Ensure that ride_length has no NA entries.
+```{r}
+anyNA(annual_tripdata_v2$ride_length)
+```
+
+
+## STEP 4: CONDUCT DESCRIPTIVE ANALYSIS
+Descriptive analysis on ride_length (all figures in seconds)
+
+```{r}
+str(annual_tripdata_v2)
+mean(annual_tripdata_v2$ride_length) #straight average (total ride length / rides)
+median(annual_tripdata_v2$ride_length) #midpoint number in the ascending array of ride lengths
+max(annual_tripdata_v2$ride_length) #longest ride
+min(annual_tripdata_v2$ride_length) #shortest ride
+```
+
+You can condense the four lines above to one line using summary() on the specific attribute
+```{r}
+summary(annual_tripdata_v2$ride_length)
+```
+
+
+### Compare members and casual users
+```{r}
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual, FUN = mean)
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual, FUN = median)
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual, FUN = max)
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual, FUN = min)
+```
+
+
+### See the average ride time by each day for members vs casual users
+```{r}
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual + annual_tripdata_v2$day_of_week, FUN = mean)
+```
+
+
+Notice that the days of the week are out of order. Let's fix that.
+```{r}
+annual_tripdata_v2$day_of_week <- ordered(annual_tripdata_v2$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+```
+
+
+Now, let's run the average ride time by each day for members vs casual users
+```{r}
+aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual + annual_tripdata_v2$day_of_week, FUN = mean)
+```
+
+
+### Analyze ridership data by type and weekday
+```{r}
+annual_tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+            ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)								# sorts
+```
+
+
+### Let's visualize the number of rides by rider type
+```{r}
+annual_tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") + 
+  xlab("Day of Week") +
+  ylab("Number of Rides") +
+  labs(fill="Customer Type") +
+  scale_y_continuous(labels = scales::comma) # Stop scientific notation
+```
+
+
+
+### Let's create a visualization for average duration
+```{r}
+annual_tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(average_duration = mean(ride_length)/60) %>%  # convert to minutes
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  xlab("Day of Week") +
+  ylab("Average Ride Duration (minutes)") +
+  labs(fill="Customer Type")
+```
+
+
+### Let's create a visualization for distribution of types of bikes by casual and annual members
+```{r}
+annual_tripdata_v2 %>% 
+  group_by(member_casual, rideable_type) %>% 
+  summarise(number_of_rides = n()) %>%
+  arrange(member_casual, rideable_type)  %>% 
+  ggplot(aes(x = rideable_type, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  xlab("Type of Bike") +
+  ylab("Number of Rides") +
+  labs(fill="Customer Type") +
+  scale_x_discrete(labels = c("Classic Bike", "Electric Bike", "Electric Scooter")) # change labels at bottom
+```
+
+### Let's visualize the number of rides by rider type per month
+```{r}
+annual_tripdata_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") + 
+  xlab("Month") +
+  ylab("Number of Rides") +
+  labs(fill="Customer Type") +
+  scale_y_continuous(labels = scales::comma) # Stop scientific notation
+```
+
+### Let's create a visualization for average duration per month
+```{r}
+annual_tripdata_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarise(average_duration = mean(ride_length)/60) %>%  # convert to minutes
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  xlab("Month") +
+  ylab("Average Ride Duration (minutes)") +
+  labs(fill="Customer Type")
+```
+
+
+### Let's visualize the number of rides by rider type per month
+```{r}
+annual_tripdata_v2 %>% 
+  group_by(member_casual, month, rideable_type) %>% 
+  summarise(number_of_rides = n()) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") + 
+  xlab("Month") +
+  ylab("Number of Rides") +
+  labs(fill="Customer Type") +
+  scale_y_continuous(labels = scales::comma) + # Stop scientific notation
+  facet_wrap(~rideable_type) +
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+## STEP 5: EXPORT SUMMARY FILE FOR FURTHER ANALYSIS
+```{r}
+counts <- aggregate(annual_tripdata_v2$ride_length ~ annual_tripdata_v2$member_casual + annual_tripdata_v2$day_of_week, FUN = mean)
+write.csv(counts, file = 'avg_ride_length.csv')
+```
+
