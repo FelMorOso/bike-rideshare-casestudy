@@ -1,8 +1,8 @@
 ---
 title: "Cyclistic Case Study"
 author: "Felipe Morales Osorio"
-date: "2025-08-22"
-output: html_document
+date: "2025-08-27"
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE}
