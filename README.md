@@ -4,6 +4,7 @@ This case study, part of the Google Data Analytics Certificate Capstone, is mean
 ## Data Source and License
 * [Data Source](https://divvy-tripdata.s3.amazonaws.com/index.html)
 * [License](https://divvybikes.com/data-license-agreement)
+
 The data from the past 12 months was used. At the time of this project, this was the data from August 2024 (08-2024) through July 2025 (07-2025).
 
 ## Case Study Documents
