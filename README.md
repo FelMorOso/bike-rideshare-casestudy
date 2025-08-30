@@ -2,8 +2,8 @@
 This case study, part of the Google Data Analytics Certificate Capstone, is meant to showcase the skills learned in the course. Cyclistic is a fictional company created for this case study. However, the data is taken from a real source and licensed.
 
 ## Data Source and License
-[Data Source](https://divvy-tripdata.s3.amazonaws.com/index.html)
-[License](https://divvybikes.com/data-license-agreement)
+* [Data Source](https://divvy-tripdata.s3.amazonaws.com/index.html)
+* [License](https://divvybikes.com/data-license-agreement)
 The data from the past 12 months was used. At the time of this project, this was the data from August 2024 (08-2024) through July 2025 (07-2025).
 
 ## Case Study Documents
